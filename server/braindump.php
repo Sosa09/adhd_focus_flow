@@ -34,7 +34,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
 
     case 'PUT':
         // Update an existing brain dump item
-        $id = basename($_SERVER['REQUEST_URI']); // Get ID from URL like /api/braindump/123
+        $id = $_GET['id'] ?? null;
         try {
             $stmt = $db->prepare('UPDATE brain_dumps SET text = ?, done = ?, category = ? WHERE id = ? AND user_id = ?');
             $stmt->execute([$data->text, $data->done ?? 0, $data->category, $id, $user->id]);
@@ -53,7 +53,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
 
     case 'DELETE':
         // Delete a brain dump item
-        $id = basename($_SERVER['REQUEST_URI']);
+        $id = $_GET['id'] ?? null;
         try {
             $stmt = $db->prepare('DELETE FROM brain_dumps WHERE id = ? AND user_id = ?');
             $stmt->execute([$id, $user->id]);

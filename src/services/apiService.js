@@ -18,7 +18,7 @@ const handleResponse = async (response) => {
 
 export const signUpWithEmail = async (email, password) => {
     try {
-        const response = await fetch(`${API_URL}/signup`, {
+        const response = await fetch(`${API_URL}/signup.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password }),
@@ -35,7 +35,7 @@ export const signUpWithEmail = async (email, password) => {
 
 export const signInWithEmail = async (email, password) => {
     try {
-        const response = await fetch(`${API_URL}/login`, {
+        const response = await fetch(`${API_URL}/login.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password }),
@@ -61,13 +61,13 @@ const getAuthHeader = () => {
 };
 
 export const fetchData = async () => {
-    const response = await fetch(`${API_URL}/data`, { headers: getAuthHeader() });
+    const response = await fetch(`${API_URL}/data.php`, { headers: getAuthHeader() });
     if (!response.ok) throw new Error('Failed to fetch data');
     return response.json();
 };
 
 export const addDocument = async (collection, data) => {
-    const response = await fetch(`${API_URL}/${collection.toLowerCase()}`, {
+    const response = await fetch(`${API_URL}/${collection.toLowerCase()}.php`, {
         method: 'POST',
         headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -77,7 +77,7 @@ export const addDocument = async (collection, data) => {
 };
 
 export const updateDocument = async (collectionName, id, data) => {
-  const response = await fetch(`${API_URL}/${collectionName.toLowerCase()}/${id}`, {
+  const response = await fetch(`${API_URL}/${collectionName.toLowerCase()}.php?id=${id}`, {
     method: 'PUT',
     headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -86,7 +86,7 @@ export const updateDocument = async (collectionName, id, data) => {
 };
 
 export const deleteDocument = async (collectionName, id) => {
-  const response = await fetch(`${API_URL}/${collectionName.toLowerCase()}/${id}`, {
+  const response = await fetch(`${API_URL}/${collectionName.toLowerCase()}.php?id=${id}`, {
     method: 'DELETE',
     headers: getAuthHeader(),
   });
@@ -94,7 +94,7 @@ export const deleteDocument = async (collectionName, id) => {
 };
 
 export const promoteToGoal = async (brainDumpItemId, newGoalData) => {
-  const response = await fetch(`${API_URL}/promote-to-goal`, {
+  const response = await fetch(`${API_URL}/promote-to-goal.php`, {
     method: 'POST',
     headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
     body: JSON.stringify({ brainDumpItemId, newGoalData }),

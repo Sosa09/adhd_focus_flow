@@ -33,7 +33,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
 
     case 'PUT':
         // Update an existing goal and its tasks/updates
-        $id = basename($_SERVER['REQUEST_URI']);
+        $id = $_GET['id'] ?? null;
         try {
             $db->beginTransaction();
 
@@ -71,7 +71,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
 
     case 'DELETE':
         // Delete a goal
-        $id = basename($_SERVER['REQUEST_URI']);
+        $id = $_GET['id'] ?? null;
         try {
             $stmt = $db->prepare('DELETE FROM goals WHERE id = ? AND user_id = ?');
             $stmt->execute([$id, $user->id]);
