@@ -1,4 +1,5 @@
-const API_URL = 'http://localhost:4000/api';
+// Read the API URL from the .env file. This is the crucial change.
+const API_URL = import.meta.env.VITE_API_URL;
 
 const handleResponse = async (response) => {
     if (response.ok) {

@@ -27,6 +27,9 @@ export default function App() {
   const [showImport, setShowImport] = useState(false);
   const [goalViewMode, setGoalViewMode] = useState('list');
 
+  // For demonstration: show that the Vite env variable is being read.
+  console.log('Vite API URL:', import.meta.env.VITE_API_URL);
+
   useEffect(() => {
     if (!authLoading) {
       setLoading(false);

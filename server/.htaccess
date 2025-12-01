@@ -6,10 +6,10 @@ RewriteEngine On
 RewriteBase /adhd_focus/
 
 # Rule 1: Redirect API requests to their corresponding .php files
-# Example: /adhd_focus/api/login -> /adhd_focus/api/login.php
+# Example: /adhd_focus/server/login -> /adhd_focus/server/login.php
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{REQUEST_FILENAME} !-f
-RewriteRule ^api/([^/]+)/?$ api/$1.php [L,QSA]
+RewriteRule ^server/(login|signup|data|goals|braindump|promote-to-goal)$ server/$1.php [L,NC]
 
 # Rule 2: For all other requests, serve the React app's index.html
 # This allows React Router to handle the URL.
