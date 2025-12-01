@@ -2,6 +2,7 @@
   "name": "adhd-focus-flow-server",
   "version": "1.0.0",
   "main": "index.js",
+  "homepage": "/adhd_focus/",
   "type": "module",
   "scripts": {
     "start": "node index.js"
