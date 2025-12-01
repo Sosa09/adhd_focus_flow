@@ -1,0 +1,18 @@
+# Turn off MultiViews to prevent conflicts with file extensions
+Options -MultiViews
+RewriteEngine On
+
+# Set the base path for the rewrite rules to your subfolder
+RewriteBase /adhd_focus/
+
+# Rule 1: Redirect API requests to their corresponding .php files
+# Example: /adhd_focus/api/login -> /adhd_focus/api/login.php
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^api/([^/]+)/?$ api/$1.php [L,QSA]
+
+# Rule 2: For all other requests, serve the React app's index.html
+# This allows React Router to handle the URL.
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^ index.html [L]
