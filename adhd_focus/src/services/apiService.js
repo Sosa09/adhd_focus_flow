@@ -1,106 +1,112 @@
-// Read the API URL from the .env file. This is the crucial change.
-const API_URL = import.meta.env.VITE_API_URL;
+// src/services/apiService.js
 
-const handleResponse = async (response) => {
-    if (response.ok) {
-        return response.json();
-    }
+// Use the environment variable if available, otherwise fallback to live URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://tech-next.eu/adhd_focus/api';
 
-    // Try to parse a JSON error message from the backend
-    try {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Request failed with status ${response.status}`);
-    } catch (e) {
-        // If the response is not JSON (e.g., a 500 server crash with an HTML page), provide a generic error.
-        throw new Error(`The server responded with an error (${response.status}). Please try again later.`);
-    }
+/**
+ * Helper to get authorization headers.
+ * Retrieves the JWT token from localStorage.
+ */
+const getAuthHeaders = () => {
+    // Check both possible keys just to be safe
+    const token = localStorage.getItem('token') || localStorage.getItem('jwt_token');
+    
+    return {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` })
+    };
 };
 
-export const signUpWithEmail = async (email, password) => {
-    try {
-        const response = await fetch(`${API_URL}/signup.php`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password }),
-        });
-        return handleResponse(response);
-    } catch (error) {
-        // Catch network errors (e.g., server is down)
-        if (error instanceof TypeError) {
-            throw new Error("Cannot connect to the server. Is it running?");
+/**
+ * Generic API Request Handler
+ */
+export const apiRequest = async (endpoint, method, body = null) => {
+    const config = {
+        method: method,
+        headers: getAuthHeaders(),
+    };
+
+    if (body) {
+        config.body = JSON.stringify(body);
+    }
+
+    const response = await fetch(`${API_BASE_URL}/${endpoint}`, config);
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'An unknown API error occurred' }));
+        if (response.status === 401) {
+            console.warn("Unauthorized access - token might be invalid");
         }
-        throw error; // Re-throw errors from handleResponse
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
     }
-};
 
-export const signInWithEmail = async (email, password) => {
-    try {
-        const response = await fetch(`${API_URL}/login.php`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password }),
-        });
-        const data = await handleResponse(response);
-        localStorage.setItem('authToken', data.accessToken);
-        return data;
-    } catch (error) {
-        if (error instanceof TypeError) throw new Error("Cannot connect to the server. Is it running?");
-        throw error;
+    if (response.status === 204) {
+        return null;
     }
-};
 
-export const signOutUser = () => {
-    localStorage.removeItem('authToken');
-};
-
-// --- Data Functions ---
-
-const getAuthHeader = () => {
-    const token = localStorage.getItem('authToken');
-    return token ? { 'Authorization': `Bearer ${token}` } : {};
-};
-
-export const fetchData = async () => {
-    const response = await fetch(`${API_URL}/data.php`, { headers: getAuthHeader() });
-    const responseText = await response.text(); // Read response as text
-    console.log("Raw API response for data.php:", responseText); // Log it
-    if (!response.ok) throw new Error('Failed to fetch data');
-    return JSON.parse(responseText); // Parse the text as JSON
-};
-
-export const addDocument = async (collection, data) => {
-    const response = await fetch(`${API_URL}/${collection.toLowerCase()}.php`, {
-        method: 'POST',
-        headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error(`Failed to add to ${collection.toLowerCase()}`);
     return response.json();
 };
 
-export const updateDocument = async (collectionName, id, data) => {
-  const response = await fetch(`${API_URL}/${collectionName.toLowerCase()}.php?id=${id}`, {
-    method: 'PUT',
-    headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) throw new Error(`Failed to update ${collectionName.toLowerCase()} with id ${id}`);
+// --- AUTH FUNCTIONS (These were missing!) ---
+
+export const signInWithEmail = async (credentials) => {
+    // credentials = { email, password }
+    return await apiRequest('login.php', 'POST', credentials);
 };
 
-export const deleteDocument = async (collectionName, id) => {
-  const response = await fetch(`${API_URL}/${collectionName.toLowerCase()}.php?id=${id}`, {
-    method: 'DELETE',
-    headers: getAuthHeader(),
-  });
-  if (!response.ok) throw new Error(`Failed to delete ${collectionName.toLowerCase()} with id ${id}`);
+export const signUpWithEmail = async (credentials) => {
+    // credentials = { email, password }
+    return await apiRequest('signup.php', 'POST', credentials);
+};
+
+export const signOutUser = () => {
+    // Clear tokens from local storage
+    localStorage.removeItem('token');
+    localStorage.removeItem('jwt_token');
+    localStorage.removeItem('user');
+    
+    // Optional: Force a reload to reset app state
+    window.location.reload();
+};
+
+// --- DATA FUNCTIONS (Required by App.jsx) ---
+
+export const fetchData = async () => {
+    return await apiRequest('data.php', 'GET');
 };
 
 export const promoteToGoal = async (brainDumpItemId, newGoalData) => {
-  const response = await fetch(`${API_URL}/promote-to-goal.php`, {
-    method: 'POST',
-    headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ brainDumpItemId, newGoalData }),
-  });
-  if (!response.ok) throw new Error('Failed to promote item to goal');
-  return response.json();
+    const payload = {
+        brainDumpItemId,
+        newGoalData
+    };
+    return await apiRequest('promote_to_goal.php', 'POST', payload);
+};
+
+// --- CRUD WRAPPERS ---
+
+// Brain Dump
+export const createBrainDump = async (item) => {
+    return await apiRequest('braindump.php', 'POST', item);
+};
+
+export const updateBrainDump = async (id, updates) => {
+    return await apiRequest(`braindump.php?id=${id}`, 'PUT', updates);
+};
+
+export const deleteBrainDump = async (id) => {
+    return await apiRequest(`braindump.php?id=${id}`, 'DELETE');
+};
+
+// Goals
+export const createGoal = async (goal) => {
+    return await apiRequest('goals.php', 'POST', goal);
+};
+
+export const updateGoal = async (id, updates) => {
+    return await apiRequest(`goals.php?id=${id}`, 'PUT', updates);
+};
+
+export const deleteGoal = async (id) => {
+    return await apiRequest(`goals.php?id=${id}`, 'DELETE');
 };

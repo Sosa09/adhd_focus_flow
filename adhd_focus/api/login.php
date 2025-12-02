@@ -4,7 +4,13 @@ require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/jwt_utils.php'; // <--- NEW REQUIRE
 
 header("Content-Type: application/json");
-header("Access-Control-Allow-Origin: *");
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+// Allow Localhost for your debugging
+if (in_array($origin, ['https://tech-next.eu', 'http://localhost:5173', 'http://localhost:3000'])) {
+    header("Access-Control-Allow-Origin: $origin");
+} else {
+    header("Access-Control-Allow-Origin: *");
+}
 header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
