@@ -1,6 +1,7 @@
 <?php
 // api/login.php
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/jwt_utils.php'; // <--- NEW REQUIRE
 
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
@@ -9,25 +10,43 @@ header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { exit(0); }
 
-$data = json_decode(file_get_contents("php://input"));
+$input = file_get_contents("php://input");
+$data = json_decode($input);
 $db = getDbConnection();
 
-// 1. tp_response_code(400);
+// Validate Input
+if (!isset($data->email) || !isset($data->password)) {
+    http_response_code(400);
     echo json_encode(['error' => 'Email and password are required']);
     exit;
+}
 
 try {
-    // 2. Query by EMAIL
+    // Query
     $stmt = $db->prepare("SELECT id, email, password FROM users WHERE email = ?");
-    $->password, $user['password'])) {
+    $stmt->execute([$data->email]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    // Verify
+    if ($user && password_verify($data->password, $user['password'])) {
+        
+        // GENERATE REAL JWT HERE
+        $token = generate_jwt($user['id'], $user['email']);
+
+        http_response_code(200);
         echo json_encode([
-            'accessToken' => 'mock_token_for_user_' . $user['id'],
-            'user' => ['id' => $user['id'], 'email' => $user['email']]
+            'accessToken' => $token, // This is now a valid x.y.z token
+            'user' => [
+                'id' => $user['id'], 
+                'email' => $user['email']
+            ]
         ]);
     } else {
-        http_response_code(401);encode(['error' => 'Invalid credentials']);
+        http_response_code(401);
+        echo json_encode(['error' => 'Invalid credentials']);
     }
 } catch (Exception $e) {
+    http_response_code(500);
     echo json_encode(['error' => 'Login failed', 'details' => $e->getMessage()]);
 }
 ?>
