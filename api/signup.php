@@ -11,26 +11,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { exit(0); }
 $data = json_decode(file_get_contents("php://input"));
 $db = getDbConnection();
 
-if (!isset($data->username) || !isset($data->password)) {
+if (!isset($data->email) || !isset($data->password)) {
     http_response_code(400);
     echo json_encode(['error' => 'Missing fields']);
     exit;
 }
 
 // Check if user exists
-$stmt = $db->prepare("SELECT id FROM users WHERE username = ?");
-$stmt->execute([$data->username]);
+$stmt = $db->prepare("SELECT id FROM users WHERE email = ?");
+$stmt->execute([$data->email]);
 if ($stmt->fetch()) {
     http_response_code(409);
     echo json_encode(['error' => 'User already exists']);
     exit;
 }
 
-// Insert new user
+// Insert new user with email
 $hashed_password = password_hash($data->password, PASSWORD_DEFAULT);
-$stmt = $db->prepare("INSERT INTO users (username, password) VALUES (?, ?)");
+$stmt = $db->prepare("INSERT INTO users (email, password) VALUES (?, ?)");
 
-if ($stmt->execute([$data->username, $hashed_password])) {
+if ($stmt->execute([$data->email, $hashed_password])) {
     http_response_code(201);
     echo json_encode(['message' => 'User created']);
 } else {
