@@ -62,8 +62,10 @@ const getAuthHeader = () => {
 
 export const fetchData = async () => {
     const response = await fetch(`${API_URL}/data.php`, { headers: getAuthHeader() });
+    const responseText = await response.text(); // Read response as text
+    console.log("Raw API response for data.php:", responseText); // Log it
     if (!response.ok) throw new Error('Failed to fetch data');
-    return response.json();
+    return JSON.parse(responseText); // Parse the text as JSON
 };
 
 export const addDocument = async (collection, data) => {

@@ -20,12 +20,44 @@ $data = json_decode(file_get_contents("php://input"));
 switch ($_SERVER['REQUEST_METHOD']) {
     case 'GET':
         try {
-            // Fetch goals
+            // 1. Fetch all base goals for the user
             $stmt = $db->prepare("SELECT * FROM goals WHERE user_id = ? ORDER BY created_at DESC");
             $stmt->execute([$userId]);
             $goals = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            echo json_encode($goals ?: []);
+            if (empty($goals)) {
+                // If there are no goals, return an empty array immediately.
+                echo json_encode([]);
+                break;
+            }
+
+            // 2. Collect all goal IDs to fetch their children in one go
+            $goalIds = array_map(fn($goal) => $goal['id'], $goals);
+            $placeholders = implode(',', array_fill(0, count($goalIds), '?'));
+
+            // 3. Fetch all tasks and updates for all goals in two efficient queries
+            $tasksStmt = $db->prepare("SELECT * FROM tasks WHERE goal_id IN ($placeholders)");
+            $tasksStmt->execute($goalIds);
+            $allTasks = $tasksStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $updatesStmt = $db->prepare("SELECT * FROM goal_updates WHERE goal_id IN ($placeholders)");
+            $updatesStmt->execute($goalIds);
+            $allUpdates = $updatesStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // 4. Group children by their parent goal_id for easy lookup
+            $tasksByGoalId = [];
+            foreach ($allTasks as $task) $tasksByGoalId[$task['goal_id']][] = $task;
+
+            $updatesByGoalId = [];
+            foreach ($allUpdates as $update) $updatesByGoalId[$update['goal_id']][] = $update;
+
+            // 5. Attach the children to their parent goal
+            foreach ($goals as &$goal) {
+                $goal['tasks'] = $tasksByGoalId[$goal['id']] ?? [];
+                $goal['updates'] = $updatesByGoalId[$goal['id']] ?? [];
+            }
+
+            echo json_encode($goals);
         } catch (PDOException $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Failed to fetch goals']);
@@ -46,7 +78,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
         break;
 
     case 'PUT':
-        // Update an existing goal and its tasks/updates
+        // Update an existing goal and its tasks/updates (no change here)
         $id = $_GET['id'] ?? null;
         try {
             $db->beginTransaction();
