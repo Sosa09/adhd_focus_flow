@@ -1,0 +1,11 @@
+# Enable URL rewriting
+RewriteEngine On
+
+# Set the base path for the rewrite rules
+RewriteBase /adhd_focus/
+
+# If the request is not for an existing file or directory,
+# redirect it to the main index.html file for React to handle.
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /adhd_focus/index.html [L]
