@@ -13,42 +13,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { exit(0); }
 $data = json_decode(file_get_contents("php://input"));
 $db = getDbConnection();
 
-// 1. Accept Username or Email (to be safe), but save as username
-$username = $data->username ?? $data->email ?? null;
-$password = $data->password ?? null;
-
-// 2. Validate input
-if (!$username || !$password) {
+// 1. STRICT CHECK: We only want email
+if (!isset($data->email) || !isset($data->password)) {
     http_response_code(400);
-    // Use 'message' for user-facing errors
-    echo json_encode(["message" => "Username and password are required."]);
-    exit;
-}
-if (strlen($password) < 8) {
-    http_response_code(400);
-    echo json_encode(["message" => "Password must be at least 8 characters long."]);
+    echo json_encode(["error" => "Email and password are required"]);
     exit;
 }
 
 try {
-    // 2. Check if exists
-    $checkStmt = $db->prepare("SELECT id FROM users WHERE username = ?");
-    $checkStmt->execute([$username]);
+    // 2. Check if EMAIL already exists
+    $checkStmt = $db->prepare("SELECT id FROM users WHERE email = ?");
+    $checkStmt->execute([$data->email]);
     if ($checkStmt->rowCount() > 0) {
         http_response_code(409);
-        echo json_encode(["message" => "This username is already taken. Please choose another."]);
+        echo json_encode(["error" => "Email already exists"]);
         exit;
     }
 
-    // 4. Insert new user
-    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-    $insertStmt = $db->prepare("INSERT INTO users (username, password) VALUES (?, ?)");
-    $insertStmt->execute([$username, $hashed_password]);
+    // 3. Insert into EMAIL column
+    $hashed_password = password_hash($data->password, PASSWORD_DEFAULT);
+    $insertStmt = $db->prepare("INSERT INTO users (email, password) VALUES (?, ?)");
+    $insertStmt->execute([$data->email, $hashed_password]);
     
     http_response_code(201);
-    echo json_encode(["message" => "Account created successfully! You can now log in."]);
+    echo json_encode(["message" => "User created successfully"]);
 } catch (PDOException $e) {
     http_response_code(500);
-    echo json_encode(["message" => "Could not create account. Please try again later."]);
+    echo json_encode(["error" => "Database error: " . $e->getMessage()]);
 }
 ?>
