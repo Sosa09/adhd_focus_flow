@@ -13,16 +13,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-$user = authenticateRequest(); // Protects the endpoint
+$userPayload = authenticateRequest(); // Protects the endpoint
+$userId = $userPayload->sub;
 $db = getDbConnection();
 $data = json_decode(file_get_contents("php://input"));
 
 switch ($_SERVER['REQUEST_METHOD']) {
+    case 'GET':
+        // Fetch all items for the logged-in user
+        try {
+            $stmt = $db->prepare("SELECT * FROM brain_dumps WHERE user_id = ? ORDER BY created_at DESC");
+            $stmt->execute([$userId]);
+            $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // IMPORTANT: Always return JSON, even if empty
+            echo json_encode($items ?: []); 
+        } catch (PDOException $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Failed to fetch items']);
+        }
+        break;
     case 'POST':
         // Create a new brain dump item
         try {
             $stmt = $db->prepare('INSERT INTO brain_dumps (user_id, text, done, category, created_at) VALUES (?, ?, ?, ?, ?)');
-            $stmt->execute([$user->id, $data->text, $data->done ?? 0, $data->category, $data->createdAt]);
+            $stmt->execute([$userId, $data->text, $data->done ?? 0, $data->category, $data->createdAt]);
             $insertId = $db->lastInsertId();
             http_response_code(201);
             echo json_encode(['id' => $insertId, 'text' => $data->text, 'done' => $data->done ?? 0, 'category' => $data->category, 'createdAt' => $data->createdAt]);
@@ -37,7 +52,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
         $id = $_GET['id'] ?? null;
         try {
             $stmt = $db->prepare('UPDATE brain_dumps SET text = ?, done = ?, category = ? WHERE id = ? AND user_id = ?');
-            $stmt->execute([$data->text, $data->done ?? 0, $data->category, $id, $user->id]);
+            $stmt->execute([$data->text, $data->done ?? 0, $data->category, $id, $userId]);
             if ($stmt->rowCount() === 0) {
                 http_response_code(404);
                 echo json_encode(['error' => 'Item not found or not authorized']);
@@ -56,7 +71,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
         $id = $_GET['id'] ?? null;
         try {
             $stmt = $db->prepare('DELETE FROM brain_dumps WHERE id = ? AND user_id = ?');
-            $stmt->execute([$id, $user->id]);
+            $stmt->execute([$id, $userId]);
             if ($stmt->rowCount() === 0) {
                 http_response_code(404);
                 echo json_encode(['error' => 'Item not found or not authorized']);

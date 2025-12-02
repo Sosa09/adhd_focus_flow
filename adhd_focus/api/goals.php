@@ -12,16 +12,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-$user = authenticateRequest();
+$userPayload = authenticateRequest();
+$userId = $userPayload->sub;
 $db = getDbConnection();
 $data = json_decode(file_get_contents("php://input"));
 
 switch ($_SERVER['REQUEST_METHOD']) {
+    case 'GET':
+        try {
+            // Fetch goals
+            $stmt = $db->prepare("SELECT * FROM goals WHERE user_id = ? ORDER BY created_at DESC");
+            $stmt->execute([$userId]);
+            $goals = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            echo json_encode($goals ?: []);
+        } catch (PDOException $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Failed to fetch goals']);
+        }
+        break;
     case 'POST':
         // Create a new goal
         try {
             $stmt = $db->prepare('INSERT INTO goals (user_id, title, description, deadline, category, created_at) VALUES (?, ?, ?, ?, ?, ?)');
-            $stmt->execute([$user->id, $data->title, $data->description, $data->deadline ?: null, $data->category, $data->createdAt]);
+            $stmt->execute([$userId, $data->title, $data->description, $data->deadline ?: null, $data->category, $data->createdAt]);
             $insertId = $db->lastInsertId();
             http_response_code(201);
             echo json_encode(['id' => $insertId, 'title' => $data->title, 'description' => $data->description, 'deadline' => $data->deadline, 'category' => $data->category, 'createdAt' => $data->createdAt]);
@@ -39,7 +53,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
 
             // Update the main goal details
             $stmt = $db->prepare('UPDATE goals SET title = ?, description = ?, deadline = ?, category = ? WHERE id = ? AND user_id = ?');
-            $stmt->execute([$data->title, $data->description, $data->deadline, $data->category, $id, $user->id]);
+            $stmt->execute([$data->title, $data->description, $data->deadline, $data->category, $id, $userId]);
 
             // Handle tasks: delete existing and insert new ones
             $db->prepare('DELETE FROM tasks WHERE goal_id = ?')->execute([$id]);
@@ -74,7 +88,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
         $id = $_GET['id'] ?? null;
         try {
             $stmt = $db->prepare('DELETE FROM goals WHERE id = ? AND user_id = ?');
-            $stmt->execute([$id, $user->id]);
+            $stmt->execute([$id, $userId]);
             if ($stmt->rowCount() === 0) {
                 http_response_code(404);
                 echo json_encode(['error' => 'Goal not found or not authorized']);
