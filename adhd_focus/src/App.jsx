@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useAuth } from './hooks/useAuth';
-import * as apiService from './services/apiService'; // Import all functions from apiService
-import { generateMotivatingDescription } from './services/ai'; // AI service remains
+import { useAuth } from './hooks/useAuth.js';
+import * as apiService from './services/apiService.js'; // Import all functions from apiService
+import { generateMotivatingDescription } from './services/ai.js'; // AI service remains
 
 import Header from './components/Header.jsx';
 import BrainDump from './components/BrainDump.jsx';
