@@ -1,24 +1,29 @@
 <?php
 // api/auth.php
+require_once __DIR__ . '/jwt_utils.php';
 
 /**
- * Authenticates a request by checking for an Authorization header.
- * For now, it returns a mock user for testing purposes.
+ * Authenticates a request by validating the JWT from the Authorization header.
  *
- * @return object A user object with an 'id' property.
+ * @return object|null The user data from the token payload if valid, otherwise null.
  */
 function authenticateRequest() {
-    // In a real application, you would validate the JWT token here.
-    // Example:
-    // 1. Get the 'Authorization: Bearer <token>' header.
-    // 2. Decode and verify the token using your JWT_SECRET.
-    // 3. If valid, return the user data from the token.
-    // 4. If invalid, send a 401 Unauthorized response.
+    $token = get_jwt_from_header();
 
-    // For now, we'll just return a mock user object.
-    // This allows us to test protected endpoints.
-    $mockUser = (object)['id' => 1];
+    if (!$token) {
+        http_response_code(401);
+        echo json_encode(['error' => 'Authorization token not found.']);
+        exit;
+    }
 
-    return $mockUser;
+    $payload = validate_jwt($token);
+    if (!$payload) {
+        http_response_code(401);
+        echo json_encode(['error' => 'Invalid or expired token.']);
+        exit;
+    }
+
+    // The token is valid, return the payload which contains user data (e.g., sub, email)
+    return $payload;
 }
 ?>
