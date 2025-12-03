@@ -1,41 +1,45 @@
 // src/services/apiService.js
 
-// Use the environment variable if available, otherwise fallback to live URL
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://tech-next.eu/adhd_focus/api';
 
 /**
- * Helper to get authorization headers.
- * Retrieves the JWT token from localStorage.
+ * Helper: Get Token from Storage
  */
-const getAuthHeaders = () => {
-    // Check both possible keys just to be safe
-    const token = localStorage.getItem('token') || localStorage.getItem('jwt_token');
-    
-    return {
-        'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` })
-    };
+const getToken = () => {
+    return localStorage.getItem('token') || localStorage.getItem('jwt_token');
 };
 
 /**
- * Generic API Request Handler
+ * Generic API Request Handler (With URL Token Bypass)
  */
 export const apiRequest = async (endpoint, method, body = null) => {
+    const token = getToken();
+    
+    // --- BYPASS FIX: Add token to URL ---
+    let url = `${API_BASE_URL}/${endpoint}`;
+    if (token) {
+        const separator = url.includes('?') ? '&' : '?';
+        url = `${url}${separator}token=${token}`;
+    }
+
     const config = {
         method: method,
-        headers: getAuthHeaders(),
+        headers: {
+            'Content-Type': 'application/json'
+            // No Authorization header (using URL bypass instead)
+        },
     };
 
     if (body) {
         config.body = JSON.stringify(body);
     }
 
-    const response = await fetch(`${API_BASE_URL}/${endpoint}`, config);
+    const response = await fetch(url, config);
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'An unknown API error occurred' }));
         if (response.status === 401) {
-            console.warn("Unauthorized access - token might be invalid");
+            console.warn("Unauthorized - Token invalid or missing");
         }
         throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
     }
@@ -47,45 +51,36 @@ export const apiRequest = async (endpoint, method, body = null) => {
     return response.json();
 };
 
-// --- AUTH FUNCTIONS (These were missing!) ---
+// --- AUTH FUNCTIONS ---
 
-export const signInWithEmail = async (credentials) => {
-    // credentials = { email, password }
+export const loginUser = async (credentials) => {
     return await apiRequest('login.php', 'POST', credentials);
 };
 
-export const signUpWithEmail = async (credentials) => {
-    // credentials = { email, password }
+export const registerUser = async (credentials) => {
     return await apiRequest('signup.php', 'POST', credentials);
 };
 
 export const signOutUser = () => {
-    // Clear tokens from local storage
     localStorage.removeItem('token');
     localStorage.removeItem('jwt_token');
     localStorage.removeItem('user');
-    
-    // Optional: Force a reload to reset app state
     window.location.reload();
 };
 
-// --- DATA FUNCTIONS (Required by App.jsx) ---
+// --- DATA FUNCTIONS ---
 
 export const fetchData = async () => {
     return await apiRequest('data.php', 'GET');
 };
 
 export const promoteToGoal = async (brainDumpItemId, newGoalData) => {
-    const payload = {
-        brainDumpItemId,
-        newGoalData
-    };
+    const payload = { brainDumpItemId, newGoalData };
     return await apiRequest('promote_to_goal.php', 'POST', payload);
 };
 
 // --- CRUD WRAPPERS ---
 
-// Brain Dump
 export const createBrainDump = async (item) => {
     return await apiRequest('braindump.php', 'POST', item);
 };
@@ -98,7 +93,6 @@ export const deleteBrainDump = async (id) => {
     return await apiRequest(`braindump.php?id=${id}`, 'DELETE');
 };
 
-// Goals
 export const createGoal = async (goal) => {
     return await apiRequest('goals.php', 'POST', goal);
 };
@@ -110,3 +104,9 @@ export const updateGoal = async (id, updates) => {
 export const deleteGoal = async (id) => {
     return await apiRequest(`goals.php?id=${id}`, 'DELETE');
 };
+
+// --- ALIASES (This fixes your Login.jsx error!) ---
+// These map the old function names to the new PHP-compatible ones
+export const signInWithEmail = loginUser;
+export const signUpWithEmail = registerUser;
+export const signOut = signOutUser;
